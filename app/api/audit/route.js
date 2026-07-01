@@ -40,6 +40,7 @@ Return only valid JSON, no extra text.`;
     messages: [{ role: "user", content: prompt }],
   });
 
-  const result = JSON.parse(message.content[0].text);
+  const raw = message.content[0].text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const result = JSON.parse(raw);
   return Response.json(result);
 }
