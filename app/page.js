@@ -155,6 +155,9 @@ export default function Home() {
           </div>
         )}
       </div>
+        <footer className="mt-12 text-center text-gray-600 text-sm">
+        Built by Lydia Gallagher
+        </footer>
     </main>
   );
 }
