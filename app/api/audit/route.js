@@ -5,9 +5,19 @@ const client = new Anthropic({
 });
 
 export async function POST(request) {
-  const { content, contentType, demographic } = await request.json();
+  try {
+    const body = await request.json();
+    const { content, contentType, demographic } = body;
 
-  const prompt = `You are an expert in marketing compliance, readability, and audience alignment. Audit the following ${contentType} marketing content for a ${demographic} audience.
+    if (!content || !contentType || !demographic) {
+      return Response.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (content.length > 10000) {
+      return Response.json({ error: "Content too long" }, { status: 400 });
+    }
+
+    const prompt = `You are an expert in marketing compliance, readability, and audience alignment. Audit the following ${contentType} marketing content for a ${demographic} audience.
 
 Content to audit:
 """
@@ -34,13 +44,23 @@ Provide your audit in this exact JSON format:
 
 Return only valid JSON, no extra text.`;
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1000,
-    messages: [{ role: "user", content: prompt }],
-  });
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 2048,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-  const raw = message.content[0].text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  const result = JSON.parse(raw);
-  return Response.json(result);
+    const raw = message.content[0].text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const result = JSON.parse(raw);
+
+    result.readabilityIssues = Array.isArray(result.readabilityIssues) ? result.readabilityIssues : [];
+    result.readabilitySuggestions = Array.isArray(result.readabilitySuggestions) ? result.readabilitySuggestions : [];
+    result.complianceChecks = Array.isArray(result.complianceChecks) ? result.complianceChecks : [];
+
+    return Response.json(result);
+
+  } catch (error) {
+    console.error("Audit error:", error);
+    return Response.json({ error: "Audit failed. Please try again." }, { status: 500 });
+  }
 }
